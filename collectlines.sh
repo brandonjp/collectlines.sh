@@ -1,35 +1,74 @@
 #!/bin/bash
 
-# The first four arguments are treated as single values that control the operation of the script.
-DIRECTORY=$1 # The directory to search for files
-FILE_EXTENSION=$2 # The file extension to look for (without the dot)
-OUTPUT_FILE=$3 # The name of the file to write the output to
-LINE_NUMBERS=("${@:4}") # All remaining arguments are treated as line numbers to extract
+# Default mode is not random
+RANDOM_MODE=0
 
-# Check if the directory exists
+# Parse arguments
+while getopts ":r:" opt; do
+  case ${opt} in
+    r)
+      RANDOM_MODE=1
+      MAX_FILES=$OPTARG
+      ;;
+    \?)
+      echo "Invalid option: $OPTARG" 1>&2
+      exit 1
+      ;;
+    :)
+      echo "Invalid option: $OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
+#Assign arguments to variables
+DIRECTORY=$1
+FILE_EXTENSION=$2
+OUTPUT_FILE=$3
+LINE_NUMBERS=("${@:4}")
+
+#Check if directory exists
 if [ ! -d "$DIRECTORY" ]; then
   echo "Error: Directory $DIRECTORY does not exist"
   exit 1
 fi
 
-# Create or truncate the output file
-# The ":" command is a shell builtin that does nothing, but because of the redirection operator,
-# this line effectively creates the OUTPUT_FILE if it does not exist and empties it if it does.
+#Create or truncate output file
 : > "$OUTPUT_FILE"
 
-# Loop over each file in the directory with the specified extension
-for file in "$DIRECTORY"/*."$FILE_EXTENSION"; do
-  # The -e test returns true if the file exists
-  if [ -e "$file" ]; then
-    # Echo the file name to the output file
-    echo "# $file" >> "$OUTPUT_FILE"
-    # Loop over each line number specified
-    for line in "${LINE_NUMBERS[@]}"; do
-      # The sed -n "${line}p" command prints the line number (contained in the ${line} variable)
-      # from the file, appending it to the output file.
-      sed -n "${line}p" "$file" >> "$OUTPUT_FILE"
-    done
-    # Append a blank line for readability
-    echo "" >> "$OUTPUT_FILE"
-  fi
-done
+#If random mode is enabled
+if [ $RANDOM_MODE -eq 1 ]; then
+  #Put all files into an array
+  FILES=("$DIRECTORY"/*."$FILE_EXTENSION")
+
+  #Randomly shuffle the files array
+  FILES=($(shuf -e "${FILES[@]}"))
+
+  #Loop over each text file up to the max number of files
+  for file in "${FILES[@]:0:$MAX_FILES}"
+  do
+    if [ -e "$file" ]; then
+      echo "# $file" >> "$OUTPUT_FILE"
+      #Loop over each line number
+      for line in "${LINE_NUMBERS[@]}"; do
+        #Print the specified line number
+        sed -n "${line}p" "$file" >> "$OUTPUT_FILE"
+      done
+      echo "" >> "$OUTPUT_FILE"
+    fi
+  done
+else
+  # Regular mode, loop over each text file
+  for file in "$DIRECTORY"/*."$FILE_EXTENSION"; do
+    if [ -e "$file" ]; then
+      echo "# $file" >> "$OUTPUT_FILE"
+      #Loop over each line number
+      for line in "${LINE_NUMBERS[@]}"; do
+        #Print the specified line number
+        sed -n "${line}p" "$file" >> "$OUTPUT_FILE"
+      done
+      echo "" >> "$OUTPUT_FILE"
+    fi
+  done
+fi
