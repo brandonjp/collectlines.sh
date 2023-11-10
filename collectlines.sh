@@ -28,11 +28,11 @@ while getopts ":r:" opt; do
       MAX_FILES=$OPTARG
       ;;
     \?)
-      echo "Invalid option: $OPTARG" 1>&2
+      echo "Invalid option: -$OPTARG" 1>&2
       exit 1
       ;;
     :)
-      echo "Invalid option: $OPTARG requires an argument" 1>&2
+      echo "Invalid option: -$OPTARG requires an argument" 1>&2
       exit 1
       ;;
   esac
@@ -60,7 +60,7 @@ if [ $RANDOM_MODE -eq 1 ]; then
   FILES=("$DIRECTORY"/*."$FILE_EXTENSION")
 
   #Randomly shuffle the files array
-  FILES=($(shuf -e "${FILES[@]}"))
+  FILES=($(printf "%s\n" "${FILES[@]}" | sort -R))
 
   #Loop over each text file up to the max number of files
   for file in "${FILES[@]:0:$MAX_FILES}"
